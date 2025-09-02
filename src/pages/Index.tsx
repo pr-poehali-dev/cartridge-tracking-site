@@ -879,17 +879,25 @@ export default function Index() {
                           {filteredHistory
                             .filter(record => record.department === department)
                             .map((record) => (
-                              <div key={record.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
-                                <div className="flex items-center gap-2">
-                                  <Icon name={getSubcategoryIcon(record.subcategory)} size={14} />
-                                  <span>{record.itemName}</span>
-                                  <Badge variant="secondary" size="sm">
-                                    {record.quantity} шт
-                                  </Badge>
+                              <div key={record.id} className="bg-gray-50 p-3 rounded border">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Icon name={getSubcategoryIcon(record.subcategory)} size={14} />
+                                    <span className="font-medium">{record.itemName}</span>
+                                    <Badge variant="secondary" size="sm">
+                                      {record.quantity} шт
+                                    </Badge>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-bold text-green-600">{record.totalPrice.toLocaleString('ru-RU')} ₽</div>
+                                    <div className="text-gray-500 text-xs">{record.date}</div>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="font-medium">{record.totalPrice.toLocaleString('ru-RU')} ₽</div>
-                                  <div className="text-gray-500">{record.date}</div>
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Icon name="User" size={12} />
+                                  <span>Получатель: <strong>{record.recipient}</strong></span>
+                                  <span className="text-gray-400">•</span>
+                                  <span>Цена за ед.: {record.unitPrice.toLocaleString('ru-RU')} ₽</span>
                                 </div>
                               </div>
                             ))
@@ -901,6 +909,201 @@ export default function Index() {
                 )}
               </CardContent>
             </Card>
+            
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="PieChart" size={20} />
+                    Топ получателей печатающей техники
+                  </CardTitle>
+                  <CardDescription>За {monthNames[selectedMonth]} {selectedYear}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const printingHistory = filteredHistory.filter(record => record.subcategory === 'printing');
+                    const recipientStats = printingHistory.reduce((acc: Record<string, {total: number, items: number, name: string}>, record) => {
+                      const key = `${record.recipient}-${record.department}`;
+                      if (!acc[key]) {
+                        acc[key] = {total: 0, items: 0, name: record.recipient};
+                      }
+                      acc[key].total += record.totalPrice;
+                      acc[key].items += record.quantity;
+                      return acc;
+                    }, {});
+                    
+                    const sortedRecipients = Object.entries(recipientStats)
+                      .sort(([,a], [,b]) => b.total - a.total)
+                      .slice(0, 5);
+                      
+                    if (sortedRecipients.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <Icon name="PrinterCheck" size={48} className="mx-auto text-gray-400 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            Нет выдач печатающей техники
+                          </h3>
+                          <p className="text-gray-600">За выбранный период техника не выдавалась</p>
+                        </div>
+                      );
+                    }
+                    
+                    const total = sortedRecipients.reduce((sum, [, data]) => sum + data.total, 0);
+                    const colors = ['#2563eb', '#dc2626', '#16a34a', '#ca8a04', '#9333ea'];
+                    
+                    return (
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <svg viewBox="0 0 200 200" className="w-48 h-48 mx-auto">
+                            {(() => {
+                              let currentAngle = 0;
+                              return sortedRecipients.map(([key, data], index) => {
+                                const percentage = (data.total / total) * 100;
+                                const angle = (percentage / 100) * 360;
+                                const startAngle = currentAngle;
+                                const endAngle = currentAngle + angle;
+                                currentAngle += angle;
+                                
+                                const x1 = 100 + 80 * Math.cos((startAngle - 90) * Math.PI / 180);
+                                const y1 = 100 + 80 * Math.sin((startAngle - 90) * Math.PI / 180);
+                                const x2 = 100 + 80 * Math.cos((endAngle - 90) * Math.PI / 180);
+                                const y2 = 100 + 80 * Math.sin((endAngle - 90) * Math.PI / 180);
+                                
+                                const largeArc = angle > 180 ? 1 : 0;
+                                
+                                const pathData = [
+                                  `M 100 100`,
+                                  `L ${x1} ${y1}`,
+                                  `A 80 80 0 ${largeArc} 1 ${x2} ${y2}`,
+                                  'Z'
+                                ].join(' ');
+                                
+                                return (
+                                  <path
+                                    key={key}
+                                    d={pathData}
+                                    fill={colors[index % colors.length]}
+                                    stroke="white"
+                                    strokeWidth="2"
+                                  />
+                                );
+                              });
+                            })()}
+                          </svg>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {sortedRecipients.map(([key, data], index) => (
+                            <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-3 h-3 rounded-full" 
+                                  style={{backgroundColor: colors[index % colors.length]}}
+                                ></div>
+                                <span className="font-medium">{data.name}</span>
+                                <Badge variant="outline" size="sm">
+                                  {data.items} шт
+                                </Badge>
+                              </div>
+                              <div className="font-bold text-green-600">
+                                {data.total.toLocaleString('ru-RU')} ₽
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="text-center text-sm text-gray-500 border-t pt-2">
+                          Общая стоимость: <strong>{total.toLocaleString('ru-RU')} ₽</strong>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Users" size={20} />
+                    Статистика по сотрудникам
+                  </CardTitle>
+                  <CardDescription>Топ-5 получателей за {monthNames[selectedMonth]} {selectedYear}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const employeeStats = filteredHistory.reduce((acc: Record<string, {total: number, items: number, department: string}>, record) => {
+                      if (!acc[record.recipient]) {
+                        acc[record.recipient] = {total: 0, items: 0, department: record.department};
+                      }
+                      acc[record.recipient].total += record.totalPrice;
+                      acc[record.recipient].items += record.quantity;
+                      return acc;
+                    }, {});
+                    
+                    const sortedEmployees = Object.entries(employeeStats)
+                      .sort(([,a], [,b]) => b.total - a.total)
+                      .slice(0, 5);
+                      
+                    if (sortedEmployees.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <Icon name="Users" size={48} className="mx-auto text-gray-400 mb-4" />
+                          <p className="text-gray-600">Нет данных за выбранный период</p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-3">
+                        {sortedEmployees.map(([name, data], index) => (
+                          <div key={name} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                  <span className="text-sm font-bold text-primary">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="font-medium">{name}</div>
+                                  <div className="text-sm text-gray-500">{data.department}</div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-bold text-green-600">
+                                  {data.total.toLocaleString('ru-RU')} ₽
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {data.items} позиций
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-2 space-y-1">
+                              {filteredHistory
+                                .filter(record => record.recipient === name)
+                                .slice(0, 3)
+                                .map((record, idx) => (
+                                  <div key={idx} className="text-xs text-gray-600 flex items-center gap-1">
+                                    <Icon name={getSubcategoryIcon(record.subcategory)} size={10} />
+                                    <span>{record.itemName} ({record.quantity} шт)</span>
+                                  </div>
+                                ))
+                              }
+                              {filteredHistory.filter(record => record.recipient === name).length > 3 && (
+                                <div className="text-xs text-gray-500">
+                                  ... еще {filteredHistory.filter(record => record.recipient === name).length - 3} позиций
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
