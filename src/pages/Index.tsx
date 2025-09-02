@@ -14,6 +14,7 @@ interface InventoryItem {
   id: string;
   name: string;
   category: 'cartridge' | 'equipment' | 'supplies';
+  subcategory: 'printing' | 'consumables' | 'tools';
   quantity: number;
   description?: string;
 }
@@ -24,19 +25,24 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('warehouse');
   
   const [inventory, setInventory] = useState<InventoryItem[]>([
-    { id: '1', name: 'HP LaserJet 1020', category: 'equipment', quantity: 3, description: 'Лазерный принтер' },
-    { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', quantity: 12, description: 'Черный картридж' },
-    { id: '3', name: 'Бумага А4', category: 'supplies', quantity: 500, description: 'Офисная бумага' },
-    { id: '4', name: 'Canon PIXMA G3420', category: 'equipment', quantity: 2, description: 'Струйный принтер' },
-    { id: '5', name: 'Картридж Canon PG-46', category: 'cartridge', quantity: 8, description: 'Черный картридж Canon' }
+    { id: '1', name: 'HP LaserJet 1020', category: 'equipment', subcategory: 'printing', quantity: 3, description: 'Лазерный принтер' },
+    { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', subcategory: 'printing', quantity: 12, description: 'Черный картридж' },
+    { id: '3', name: 'Бумага А4', category: 'supplies', subcategory: 'consumables', quantity: 500, description: 'Офисная бумага' },
+    { id: '4', name: 'Canon PIXMA G3420', category: 'equipment', subcategory: 'printing', quantity: 2, description: 'Струйный принтер' },
+    { id: '5', name: 'Картридж Canon PG-46', category: 'cartridge', subcategory: 'printing', quantity: 8, description: 'Черный картридж Canon' },
+    { id: '6', name: 'Отвертка крестовая', category: 'equipment', subcategory: 'tools', quantity: 5, description: 'Инструмент для ремонта' },
+    { id: '7', name: 'Салфетки для чистки', category: 'supplies', subcategory: 'consumables', quantity: 25, description: 'Влажные салфетки' }
   ]);
 
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
     name: '',
     category: 'cartridge',
+    subcategory: 'printing',
     quantity: 0,
     description: ''
   });
+
+  const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
 
   const [issueForm, setIssueForm] = useState({
     itemId: '',
@@ -54,7 +60,7 @@ export default function Index() {
   };
 
   const addItem = () => {
-    if (!newItem.name || newItem.quantity <= 0) {
+    if (!newItem.name || newItem.quantity <= 0 || !newItem.subcategory) {
       toast({ title: 'Ошибка', description: 'Заполните все обязательные поля', variant: 'destructive' });
       return;
     }
@@ -65,7 +71,7 @@ export default function Index() {
     };
     
     setInventory([...inventory, item]);
-    setNewItem({ name: '', category: 'cartridge', quantity: 0, description: '' });
+    setNewItem({ name: '', category: 'cartridge', subcategory: 'printing', quantity: 0, description: '' });
     toast({ title: 'Добавлено', description: `${item.name} добавлен на склад` });
   };
 
@@ -108,6 +114,28 @@ export default function Index() {
       default: return 'Прочее';
     }
   };
+
+  const getSubcategoryLabel = (subcategory: string) => {
+    switch (subcategory) {
+      case 'printing': return 'Печатающая техника';
+      case 'consumables': return 'Прочие расходные материалы';
+      case 'tools': return 'Инструменты';
+      default: return 'Прочее';
+    }
+  };
+
+  const getSubcategoryIcon = (subcategory: string) => {
+    switch (subcategory) {
+      case 'printing': return 'Printer';
+      case 'consumables': return 'Package';
+      case 'tools': return 'Wrench';
+      default: return 'Box';
+    }
+  };
+
+  const filteredInventory = activeSubcategory === 'all' 
+    ? inventory 
+    : inventory.filter(item => item.subcategory === activeSubcategory);
 
   if (!isAuthenticated) {
     return (
@@ -177,12 +205,51 @@ export default function Index() {
           </TabsList>
 
           <TabsContent value="warehouse" className="space-y-4">
+            <div className="flex gap-2 mb-6 flex-wrap">
+              <Button
+                variant={activeSubcategory === 'all' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveSubcategory('all')}
+                className="flex items-center gap-2"
+              >
+                <Icon name="Grid3x3" size={16} />
+                Все товары
+              </Button>
+              <Button
+                variant={activeSubcategory === 'printing' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveSubcategory('printing')}
+                className="flex items-center gap-2"
+              >
+                <Icon name="Printer" size={16} />
+                Печатающая техника
+              </Button>
+              <Button
+                variant={activeSubcategory === 'consumables' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveSubcategory('consumables')}
+                className="flex items-center gap-2"
+              >
+                <Icon name="Package" size={16} />
+                Прочие расходники
+              </Button>
+              <Button
+                variant={activeSubcategory === 'tools' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveSubcategory('tools')}
+                className="flex items-center gap-2"
+              >
+                <Icon name="Wrench" size={16} />
+                Инструменты
+              </Button>
+            </div>
+            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {inventory.map((item) => (
+              {filteredInventory.map((item) => (
                 <Card key={item.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <Icon name={getCategoryIcon(item.category)} size={24} className="text-primary" />
+                      <Icon name={getSubcategoryIcon(item.subcategory)} size={24} className="text-primary" />
                       <Badge variant={item.quantity > 5 ? "default" : item.quantity > 0 ? "secondary" : "destructive"}>
                         {item.quantity} шт
                       </Badge>
@@ -191,21 +258,34 @@ export default function Index() {
                     <CardDescription>{item.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Icon name="Tag" size={14} />
-                      {getCategoryLabel(item.category)}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Icon name="Tag" size={14} />
+                        {getCategoryLabel(item.category)}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-primary">
+                        <Icon name="FolderOpen" size={14} />
+                        {getSubcategoryLabel(item.subcategory)}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
             
-            {inventory.length === 0 && (
-              <Card className="text-center py-12">
+            {filteredInventory.length === 0 && (
+              <Card className="text-center py-12 col-span-full">
                 <CardContent>
                   <Icon name="Package" size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Склад пуст</h3>
-                  <p className="text-gray-600">Добавьте первый товар через раздел "Поступление"</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {activeSubcategory === 'all' ? 'Склад пуст' : 'В этом подразделе нет товаров'}
+                  </h3>
+                  <p className="text-gray-600">
+                    {activeSubcategory === 'all' 
+                      ? 'Добавьте первый товар через раздел "Поступление"'
+                      : 'Добавьте товары в этот подраздел через "Поступление"'
+                    }
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -291,10 +371,49 @@ export default function Index() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="category">Категория</Label>
-                    <Select onValueChange={(value: any) => setNewItem({...newItem, category: value})}>
+                    <Label htmlFor="subcategory">Подраздел склада *</Label>
+                    <Select onValueChange={(value: any) => {
+                      setNewItem({...newItem, subcategory: value});
+                      // Автоматически выбираем подходящую категорию
+                      if (value === 'printing') {
+                        setNewItem(prev => ({...prev, subcategory: value, category: 'equipment'}));
+                      } else if (value === 'consumables') {
+                        setNewItem(prev => ({...prev, subcategory: value, category: 'supplies'}));
+                      } else if (value === 'tools') {
+                        setNewItem(prev => ({...prev, subcategory: value, category: 'equipment'}));
+                      }
+                    }}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Выберите категорию" />
+                        <SelectValue placeholder="Выберите подраздел" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="printing">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Printer" size={16} />
+                            Печатающая техника
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="consumables">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Package" size={16} />
+                            Прочие расходные материалы
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="tools">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Wrench" size={16} />
+                            Инструменты
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Тип товара</Label>
+                    <Select value={newItem.category} onValueChange={(value: any) => setNewItem({...newItem, category: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тип" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cartridge">
