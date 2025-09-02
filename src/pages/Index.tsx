@@ -45,6 +45,14 @@ export default function Index() {
   ]);
   const [newDepartment, setNewDepartment] = useState('');
   
+  // Редактирование товаров
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Фильтрация по месяцам
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
   const [inventory, setInventory] = useState<InventoryItem[]>([
     { id: '1', name: 'HP LaserJet 1020', category: 'equipment', subcategory: 'printing', quantity: 3, price: 15000, description: 'Лазерный принтер' },
     { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', subcategory: 'printing', quantity: 12, price: 2500, description: 'Черный картридж' },
@@ -184,6 +192,26 @@ export default function Index() {
     toast({ title: 'Выдано', description: `${item.name} выдан отделу ${issueForm.department}` });
   };
 
+  const editItem = (item: InventoryItem) => {
+    setEditingItem({...item});
+    setIsEditDialogOpen(true);
+  };
+
+  const updateItem = () => {
+    if (!editingItem || !editingItem.name || editingItem.quantity < 0 || editingItem.price <= 0) {
+      toast({ title: 'Ошибка', description: 'Заполните все поля корректно', variant: 'destructive' });
+      return;
+    }
+
+    setInventory(inventory.map(item => 
+      item.id === editingItem.id ? editingItem : item
+    ));
+    
+    setIsEditDialogOpen(false);
+    setEditingItem(null);
+    toast({ title: 'Обновлено', description: `${editingItem.name} успешно обновлен` });
+  };
+
   const deleteItem = (itemId: string) => {
     const item = inventory.find(i => i.id === itemId);
     if (item) {
@@ -283,6 +311,23 @@ export default function Index() {
   const filteredInventory = activeSubcategory === 'all' 
     ? inventory 
     : inventory.filter(item => item.subcategory === activeSubcategory);
+
+  // Фильтрация истории по месяцам
+  const filteredHistory = issueHistory.filter(record => {
+    const recordDate = new Date(record.date.split('.').reverse().join('-'));
+    return recordDate.getMonth() === selectedMonth && recordDate.getFullYear() === selectedYear;
+  });
+
+  // Получение списка доступных месяцев и лет
+  const availableMonths = [...new Set(issueHistory.map(record => {
+    const date = new Date(record.date.split('.').reverse().join('-'));
+    return `${date.getFullYear()}-${date.getMonth()}`;
+  }))].sort().reverse();
+
+  const monthNames = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+  ];
 
   if (!isAuthenticated) {
     return (
@@ -427,14 +472,24 @@ export default function Index() {
                           <Icon name="Ruble" size={14} />
                           {item.price.toLocaleString('ru-RU')} ₽
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => deleteItem(item.id)}
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Icon name="Trash2" size={14} />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => editItem(item)}
+                            className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            <Icon name="Edit" size={14} />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => deleteItem(item.id)}
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Icon name="Trash2" size={14} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -670,20 +725,65 @@ export default function Index() {
           </TabsContent>
 
           <TabsContent value="reports" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Calendar" size={20} />
+                  Фильтр по периоду
+                </CardTitle>
+                <CardDescription>Выберите месяц и год для просмотра отчета</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Месяц</Label>
+                    <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthNames.map((month, index) => (
+                          <SelectItem key={index} value={index.toString()}>
+                            {month}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Год</Label>
+                    <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2024, 2025, 2026].map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Icon name="TrendingUp" size={20} className="text-green-600" />
-                    Всего выдано
+                    Выдано за {monthNames[selectedMonth]} {selectedYear}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    {issueHistory.reduce((sum, record) => sum + record.totalPrice, 0).toLocaleString('ru-RU')} ₽
+                    {filteredHistory.reduce((sum, record) => sum + record.totalPrice, 0).toLocaleString('ru-RU')} ₽
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Операций: {issueHistory.length}
+                    Операций: {filteredHistory.length}
                   </p>
                 </CardContent>
               </Card>
@@ -692,12 +792,12 @@ export default function Index() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Icon name="Users" size={20} className="text-blue-600" />
-                    Отделы
+                    Отделы за месяц
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-blue-600">
-                    {new Set(issueHistory.map(record => record.department)).size}
+                    {new Set(filteredHistory.map(record => record.department)).size}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
                     Активных отделов
@@ -709,12 +809,12 @@ export default function Index() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Icon name="Package" size={20} className="text-orange-600" />
-                    Товары
+                    Товары за месяц
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-orange-600">
-                    {issueHistory.reduce((sum, record) => sum + record.quantity, 0)}
+                    {filteredHistory.reduce((sum, record) => sum + record.quantity, 0)}
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
                     Единиц выдано
@@ -732,16 +832,18 @@ export default function Index() {
                 <CardDescription>Затраты по отделам и подразделам</CardDescription>
               </CardHeader>
               <CardContent>
-                {issueHistory.length === 0 ? (
+                {filteredHistory.length === 0 ? (
                   <div className="text-center py-8">
                     <Icon name="FileText" size={48} className="mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Нет данных для отчета</h3>
-                    <p className="text-gray-600">Выдайте товары для формирования отчета</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Нет данных за {monthNames[selectedMonth]} {selectedYear}
+                    </h3>
+                    <p className="text-gray-600">Выберите другой период или выдайте товары</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {Object.entries(
-                      issueHistory.reduce((acc: Record<string, {total: number, items: number, subcategories: Set<string>}>, record) => {
+                      filteredHistory.reduce((acc: Record<string, {total: number, items: number, subcategories: Set<string>}>, record) => {
                         if (!acc[record.department]) {
                           acc[record.department] = {total: 0, items: 0, subcategories: new Set()};
                         }
@@ -773,8 +875,8 @@ export default function Index() {
                         </div>
                         
                         <div className="mt-3 space-y-2">
-                          <p className="text-sm font-medium text-gray-700">Детализация:</p>
-                          {issueHistory
+                          <p className="text-sm font-medium text-gray-700">Детализация за {monthNames[selectedMonth]} {selectedYear}:</p>
+                          {filteredHistory
                             .filter(record => record.department === department)
                             .map((record) => (
                               <div key={record.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
@@ -800,6 +902,135 @@ export default function Index() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon name="Edit" size={20} />
+                  Редактировать товар
+                </DialogTitle>
+                <DialogDescription>
+                  Измените параметры товара на складе
+                </DialogDescription>
+              </DialogHeader>
+              {editingItem && (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-name">Наименование *</Label>
+                      <Input
+                        id="edit-name"
+                        value={editingItem.name}
+                        onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                        placeholder="Введите название товара"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-subcategory">Подраздел *</Label>
+                      <Select 
+                        value={editingItem.subcategory}
+                        onValueChange={(value: any) => setEditingItem({...editingItem, subcategory: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="printing">
+                            <div className="flex items-center gap-2">
+                              <Icon name="Printer" size={16} />
+                              Печатающая техника
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="consumables">
+                            <div className="flex items-center gap-2">
+                              <Icon name="Package" size={16} />
+                              Прочие расходные материалы
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="tools">
+                            <div className="flex items-center gap-2">
+                              <Icon name="Wrench" size={16} />
+                              Инструменты
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-quantity">Количество *</Label>
+                      <Input
+                        id="edit-quantity"
+                        type="number"
+                        min="0"
+                        value={editingItem.quantity}
+                        onChange={(e) => setEditingItem({...editingItem, quantity: parseInt(e.target.value) || 0})}
+                        placeholder="0"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-price">Цена (₽) *</Label>
+                      <Input
+                        id="edit-price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editingItem.price}
+                        onChange={(e) => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-category">Тип</Label>
+                      <Select 
+                        value={editingItem.category}
+                        onValueChange={(value: any) => setEditingItem({...editingItem, category: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cartridge">Картридж</SelectItem>
+                          <SelectItem value="equipment">Оборудование</SelectItem>
+                          <SelectItem value="supplies">Расходники</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-description">Описание</Label>
+                    <Input
+                      id="edit-description"
+                      value={editingItem.description || ''}
+                      onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                      placeholder="Дополнительная информация о товаре"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2 pt-4">
+                    <Button onClick={updateItem} className="flex-1">
+                      <Icon name="Save" size={16} className="mr-2" />
+                      Сохранить изменения
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsEditDialogOpen(false)}
+                      className="flex-1"
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <TabsContent value="settings" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
