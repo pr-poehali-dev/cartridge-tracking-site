@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,13 @@ export default function Index() {
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('warehouse');
   
+  // Управление отделами
+  const [departments, setDepartments] = useState<string[]>([
+    'IT отдел', 'Бухгалтерия', 'Отдел кадров', 'Отдел продаж', 
+    'Администрация', 'Производство', 'Склад'
+  ]);
+  const [newDepartment, setNewDepartment] = useState('');
+  
   const [inventory, setInventory] = useState<InventoryItem[]>([
     { id: '1', name: 'HP LaserJet 1020', category: 'equipment', subcategory: 'printing', quantity: 3, price: 15000, description: 'Лазерный принтер' },
     { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', subcategory: 'printing', quantity: 12, price: 2500, description: 'Черный картридж' },
@@ -49,6 +56,53 @@ export default function Index() {
   ]);
 
   const [issueHistory, setIssueHistory] = useState<IssueRecord[]>([]);
+
+  // Загрузка данных из localStorage
+  useEffect(() => {
+    try {
+      const savedInventory = localStorage.getItem('inventory');
+      const savedIssueHistory = localStorage.getItem('issueHistory');
+      const savedDepartments = localStorage.getItem('departments');
+      
+      if (savedInventory) {
+        setInventory(JSON.parse(savedInventory));
+      }
+      if (savedIssueHistory) {
+        setIssueHistory(JSON.parse(savedIssueHistory));
+      }
+      if (savedDepartments) {
+        setDepartments(JSON.parse(savedDepartments));
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      toast({ title: 'Ошибка', description: 'Не удалось загрузить сохраненные данные', variant: 'destructive' });
+    }
+  }, []);
+
+  // Сохранение данных в localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('inventory', JSON.stringify(inventory));
+    } catch (error) {
+      console.error('Ошибка сохранения склада:', error);
+    }
+  }, [inventory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('issueHistory', JSON.stringify(issueHistory));
+    } catch (error) {
+      console.error('Ошибка сохранения истории:', error);
+    }
+  }, [issueHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('departments', JSON.stringify(departments));
+    } catch (error) {
+      console.error('Ошибка сохранения отделов:', error);
+    }
+  }, [departments]);
 
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
     name: '',
@@ -135,6 +189,58 @@ export default function Index() {
     if (item) {
       setInventory(inventory.filter(i => i.id !== itemId));
       toast({ title: 'Удалено', description: `${item.name} удален со склада` });
+    }
+  };
+
+  const addDepartment = () => {
+    if (!newDepartment.trim()) {
+      toast({ title: 'Ошибка', description: 'Введите название отдела', variant: 'destructive' });
+      return;
+    }
+    if (departments.includes(newDepartment.trim())) {
+      toast({ title: 'Ошибка', description: 'Такой отдел уже существует', variant: 'destructive' });
+      return;
+    }
+    setDepartments([...departments, newDepartment.trim()]);
+    setNewDepartment('');
+    toast({ title: 'Добавлен', description: `Отдел "${newDepartment.trim()}" добавлен` });
+  };
+
+  const removeDepartment = (departmentName: string) => {
+    if (departments.length <= 1) {
+      toast({ title: 'Ошибка', description: 'Нельзя удалить последний отдел', variant: 'destructive' });
+      return;
+    }
+    setDepartments(departments.filter(dept => dept !== departmentName));
+    toast({ title: 'Удален', description: `Отдел "${departmentName}" удален` });
+  };
+
+  const exportData = () => {
+    const data = {
+      inventory,
+      issueHistory,
+      departments,
+      exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Бэкап создан', description: 'Данные экспортированы' });
+  };
+
+  const clearAllData = () => {
+    if (window.confirm('Вы уверены, что хотите очистить все данные? Это действие нельзя отменить.')) {
+      setInventory([]);
+      setIssueHistory([]);
+      setDepartments(['IT отдел', 'Бухгалтерия', 'Отдел кадров']);
+      localStorage.clear();
+      toast({ title: 'Данные очищены', description: 'Все данные были удалены' });
     }
   };
 
@@ -230,7 +336,7 @@ export default function Index() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-5 bg-white shadow-sm">
             <TabsTrigger value="warehouse" className="flex items-center gap-2">
               <Icon name="Warehouse" size={16} />
               Склад
@@ -246,6 +352,10 @@ export default function Index() {
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <Icon name="BarChart3" size={16} />
               Отчеты
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Icon name="Settings" size={16} />
+              Настройки
             </TabsTrigger>
           </TabsList>
 
@@ -408,13 +518,9 @@ export default function Index() {
                         <SelectValue placeholder="Выберите отдел" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="IT отдел">IT отдел</SelectItem>
-                        <SelectItem value="Бухгалтерия">Бухгалтерия</SelectItem>
-                        <SelectItem value="Отдел кадров">Отдел кадров</SelectItem>
-                        <SelectItem value="Отдел продаж">Отдел продаж</SelectItem>
-                        <SelectItem value="Администрация">Администрация</SelectItem>
-                        <SelectItem value="Производство">Производство</SelectItem>
-                        <SelectItem value="Склад">Склад</SelectItem>
+                        {departments.map((dept) => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -691,6 +797,139 @@ export default function Index() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Building" size={20} />
+                    Управление отделами
+                  </CardTitle>
+                  <CardDescription>Добавляйте и удаляйте отделы для выдачи товаров</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-department">Новый отдел</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="new-department"
+                        value={newDepartment}
+                        onChange={(e) => setNewDepartment(e.target.value)}
+                        placeholder="Название отдела"
+                        onKeyPress={(e) => e.key === 'Enter' && addDepartment()}
+                      />
+                      <Button onClick={addDepartment} size="sm">
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Добавить
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Текущие отделы ({departments.length})</Label>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {departments.map((dept) => (
+                        <div key={dept} className="flex items-center justify-between p-2 border rounded">
+                          <span className="flex items-center gap-2">
+                            <Icon name="Building" size={14} />
+                            {dept}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => removeDepartment(dept)}
+                            className="text-red-600 hover:bg-red-50"
+                            disabled={departments.length <= 1}
+                          >
+                            <Icon name="Trash2" size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Database" size={20} />
+                    Управление данными
+                  </CardTitle>
+                  <CardDescription>Экспорт, очистка и управление сохраненными данными</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Статистика данных</Label>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="p-2 bg-gray-50 rounded">
+                        <div className="font-medium">Товаров на складе</div>
+                        <div className="text-lg font-bold text-blue-600">{inventory.length}</div>
+                      </div>
+                      <div className="p-2 bg-gray-50 rounded">
+                        <div className="font-medium">Операций выдачи</div>
+                        <div className="text-lg font-bold text-green-600">{issueHistory.length}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Button onClick={exportData} className="w-full" variant="outline">
+                      <Icon name="Download" size={16} className="mr-2" />
+                      Экспорт данных в JSON
+                    </Button>
+                    
+                    <Button 
+                      onClick={clearAllData} 
+                      className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                      variant="outline"
+                    >
+                      <Icon name="Trash2" size={16} className="mr-2" />
+                      Очистить все данные
+                    </Button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded">
+                    <Icon name="Info" size={14} className="inline mr-1" />
+                    Все изменения автоматически сохраняются в браузере
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Shield" size={20} />
+                  Информация о системе
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3 text-sm">
+                  <div>
+                    <div className="font-medium text-gray-700">Версия системы</div>
+                    <div>1.2.0</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-700">Последнее обновление</div>
+                    <div>{new Date().toLocaleDateString('ru-RU')}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-700">Хранение данных</div>
+                    <div>Локальное (браузер)</div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <div className="text-sm text-blue-800">
+                    <Icon name="Info" size={14} className="inline mr-1" />
+                    <strong>Важно:</strong> Данные сохраняются только в этом браузере. Рекомендуется периодически создавать экспорт данных.
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
