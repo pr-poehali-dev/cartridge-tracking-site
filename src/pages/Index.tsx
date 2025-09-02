@@ -16,7 +16,21 @@ interface InventoryItem {
   category: 'cartridge' | 'equipment' | 'supplies';
   subcategory: 'printing' | 'consumables' | 'tools';
   quantity: number;
+  price: number;
   description?: string;
+}
+
+interface IssueRecord {
+  id: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  recipient: string;
+  department: string;
+  date: string;
+  subcategory: string;
 }
 
 export default function Index() {
@@ -25,20 +39,23 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState('warehouse');
   
   const [inventory, setInventory] = useState<InventoryItem[]>([
-    { id: '1', name: 'HP LaserJet 1020', category: 'equipment', subcategory: 'printing', quantity: 3, description: 'Лазерный принтер' },
-    { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', subcategory: 'printing', quantity: 12, description: 'Черный картридж' },
-    { id: '3', name: 'Бумага А4', category: 'supplies', subcategory: 'consumables', quantity: 500, description: 'Офисная бумага' },
-    { id: '4', name: 'Canon PIXMA G3420', category: 'equipment', subcategory: 'printing', quantity: 2, description: 'Струйный принтер' },
-    { id: '5', name: 'Картридж Canon PG-46', category: 'cartridge', subcategory: 'printing', quantity: 8, description: 'Черный картридж Canon' },
-    { id: '6', name: 'Отвертка крестовая', category: 'equipment', subcategory: 'tools', quantity: 5, description: 'Инструмент для ремонта' },
-    { id: '7', name: 'Салфетки для чистки', category: 'supplies', subcategory: 'consumables', quantity: 25, description: 'Влажные салфетки' }
+    { id: '1', name: 'HP LaserJet 1020', category: 'equipment', subcategory: 'printing', quantity: 3, price: 15000, description: 'Лазерный принтер' },
+    { id: '2', name: 'Картридж HP CE285A', category: 'cartridge', subcategory: 'printing', quantity: 12, price: 2500, description: 'Черный картридж' },
+    { id: '3', name: 'Бумага А4', category: 'supplies', subcategory: 'consumables', quantity: 500, price: 300, description: 'Офисная бумага' },
+    { id: '4', name: 'Canon PIXMA G3420', category: 'equipment', subcategory: 'printing', quantity: 2, price: 12000, description: 'Струйный принтер' },
+    { id: '5', name: 'Картридж Canon PG-46', category: 'cartridge', subcategory: 'printing', quantity: 8, price: 1800, description: 'Черный картридж Canon' },
+    { id: '6', name: 'Отвертка крестовая', category: 'equipment', subcategory: 'tools', quantity: 5, price: 500, description: 'Инструмент для ремонта' },
+    { id: '7', name: 'Салфетки для чистки', category: 'supplies', subcategory: 'consumables', quantity: 25, price: 50, description: 'Влажные салфетки' }
   ]);
+
+  const [issueHistory, setIssueHistory] = useState<IssueRecord[]>([]);
 
   const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
     name: '',
     category: 'cartridge',
     subcategory: 'printing',
     quantity: 0,
+    price: 0,
     description: ''
   });
 
@@ -47,7 +64,8 @@ export default function Index() {
   const [issueForm, setIssueForm] = useState({
     itemId: '',
     quantity: 0,
-    recipient: ''
+    recipient: '',
+    department: ''
   });
 
   const handleLogin = () => {
@@ -60,7 +78,7 @@ export default function Index() {
   };
 
   const addItem = () => {
-    if (!newItem.name || newItem.quantity <= 0 || !newItem.subcategory) {
+    if (!newItem.name || newItem.quantity <= 0 || !newItem.subcategory || newItem.price <= 0) {
       toast({ title: 'Ошибка', description: 'Заполните все обязательные поля', variant: 'destructive' });
       return;
     }
@@ -71,12 +89,12 @@ export default function Index() {
     };
     
     setInventory([...inventory, item]);
-    setNewItem({ name: '', category: 'cartridge', subcategory: 'printing', quantity: 0, description: '' });
+    setNewItem({ name: '', category: 'cartridge', subcategory: 'printing', quantity: 0, price: 0, description: '' });
     toast({ title: 'Добавлено', description: `${item.name} добавлен на склад` });
   };
 
   const issueItem = () => {
-    if (!issueForm.itemId || !issueForm.recipient || issueForm.quantity <= 0) {
+    if (!issueForm.itemId || !issueForm.recipient || !issueForm.department || issueForm.quantity <= 0) {
       toast({ title: 'Ошибка', description: 'Заполните все поля', variant: 'destructive' });
       return;
     }
@@ -87,14 +105,37 @@ export default function Index() {
       return;
     }
 
+    const issueRecord: IssueRecord = {
+      id: Date.now().toString(),
+      itemId: item.id,
+      itemName: item.name,
+      quantity: issueForm.quantity,
+      unitPrice: item.price,
+      totalPrice: item.price * issueForm.quantity,
+      recipient: issueForm.recipient,
+      department: issueForm.department,
+      date: new Date().toLocaleDateString('ru-RU'),
+      subcategory: item.subcategory
+    };
+
+    setIssueHistory([...issueHistory, issueRecord]);
+
     setInventory(inventory.map(i => 
       i.id === issueForm.itemId 
         ? { ...i, quantity: i.quantity - issueForm.quantity }
         : i
     ));
 
-    setIssueForm({ itemId: '', quantity: 0, recipient: '' });
-    toast({ title: 'Выдано', description: `${item.name} выдан сотруднику ${issueForm.recipient}` });
+    setIssueForm({ itemId: '', quantity: 0, recipient: '', department: '' });
+    toast({ title: 'Выдано', description: `${item.name} выдан отделу ${issueForm.department}` });
+  };
+
+  const deleteItem = (itemId: string) => {
+    const item = inventory.find(i => i.id === itemId);
+    if (item) {
+      setInventory(inventory.filter(i => i.id !== itemId));
+      toast({ title: 'Удалено', description: `${item.name} удален со склада` });
+    }
   };
 
   const getCategoryIcon = (category: string) => {
@@ -189,7 +230,7 @@ export default function Index() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
             <TabsTrigger value="warehouse" className="flex items-center gap-2">
               <Icon name="Warehouse" size={16} />
               Склад
@@ -201,6 +242,10 @@ export default function Index() {
             <TabsTrigger value="receipt" className="flex items-center gap-2">
               <Icon name="Plus" size={16} />
               Поступление
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <Icon name="BarChart3" size={16} />
+              Отчеты
             </TabsTrigger>
           </TabsList>
 
@@ -267,6 +312,20 @@ export default function Index() {
                         <Icon name="FolderOpen" size={14} />
                         {getSubcategoryLabel(item.subcategory)}
                       </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+                          <Icon name="Ruble" size={14} />
+                          {item.price.toLocaleString('ru-RU')} ₽
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteItem(item.id)}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Icon name="Trash2" size={14} />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -331,14 +390,34 @@ export default function Index() {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Получатель</Label>
-                  <Input
-                    id="recipient"
-                    value={issueForm.recipient}
-                    onChange={(e) => setIssueForm({...issueForm, recipient: e.target.value})}
-                    placeholder="ФИО сотрудника"
-                  />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Получатель *</Label>
+                    <Input
+                      id="recipient"
+                      value={issueForm.recipient}
+                      onChange={(e) => setIssueForm({...issueForm, recipient: e.target.value})}
+                      placeholder="ФИО сотрудника"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Отдел *</Label>
+                    <Select onValueChange={(value) => setIssueForm({...issueForm, department: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите отдел" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="IT отдел">IT отдел</SelectItem>
+                        <SelectItem value="Бухгалтерия">Бухгалтерия</SelectItem>
+                        <SelectItem value="Отдел кадров">Отдел кадров</SelectItem>
+                        <SelectItem value="Отдел продаж">Отдел продаж</SelectItem>
+                        <SelectItem value="Администрация">Администрация</SelectItem>
+                        <SelectItem value="Производство">Производство</SelectItem>
+                        <SelectItem value="Склад">Склад</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 
                 <Button onClick={issueItem} className="w-full">
@@ -439,16 +518,31 @@ export default function Index() {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Количество *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={newItem.quantity || ''}
-                    onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
-                    placeholder="0"
-                  />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Количество *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={newItem.quantity || ''}
+                      onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Цена за единицу (₽) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={newItem.price || ''}
+                      onChange={(e) => setNewItem({...newItem, price: parseFloat(e.target.value) || 0})}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
@@ -465,6 +559,138 @@ export default function Index() {
                   <Icon name="Plus" size={16} className="mr-2" />
                   Добавить на склад
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Icon name="TrendingUp" size={20} className="text-green-600" />
+                    Всего выдано
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {issueHistory.reduce((sum, record) => sum + record.totalPrice, 0).toLocaleString('ru-RU')} ₽
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Операций: {issueHistory.length}
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Icon name="Users" size={20} className="text-blue-600" />
+                    Отделы
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {new Set(issueHistory.map(record => record.department)).size}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Активных отделов
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Icon name="Package" size={20} className="text-orange-600" />
+                    Товары
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {issueHistory.reduce((sum, record) => sum + record.quantity, 0)}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Единиц выдано
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="BarChart3" size={20} />
+                  Отчет по отделам
+                </CardTitle>
+                <CardDescription>Затраты по отделам и подразделам</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {issueHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Icon name="FileText" size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Нет данных для отчета</h3>
+                    <p className="text-gray-600">Выдайте товары для формирования отчета</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(
+                      issueHistory.reduce((acc: Record<string, {total: number, items: number, subcategories: Set<string>}>, record) => {
+                        if (!acc[record.department]) {
+                          acc[record.department] = {total: 0, items: 0, subcategories: new Set()};
+                        }
+                        acc[record.department].total += record.totalPrice;
+                        acc[record.department].items += record.quantity;
+                        acc[record.department].subcategories.add(record.subcategory);
+                        return acc;
+                      }, {})
+                    ).map(([department, data]) => (
+                      <div key={department} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-lg flex items-center gap-2">
+                            <Icon name="Building" size={16} />
+                            {department}
+                          </h4>
+                          <Badge variant="outline" className="text-lg font-bold">
+                            {data.total.toLocaleString('ru-RU')} ₽
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Package" size={14} />
+                            Товаров: {data.items} шт
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Icon name="Layers" size={14} />
+                            Подразделов: {data.subcategories.size}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 space-y-2">
+                          <p className="text-sm font-medium text-gray-700">Детализация:</p>
+                          {issueHistory
+                            .filter(record => record.department === department)
+                            .map((record) => (
+                              <div key={record.id} className="flex items-center justify-between text-sm bg-gray-50 p-2 rounded">
+                                <div className="flex items-center gap-2">
+                                  <Icon name={getSubcategoryIcon(record.subcategory)} size={14} />
+                                  <span>{record.itemName}</span>
+                                  <Badge variant="secondary" size="sm">
+                                    {record.quantity} шт
+                                  </Badge>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium">{record.totalPrice.toLocaleString('ru-RU')} ₽</div>
+                                  <div className="text-gray-500">{record.date}</div>
+                                </div>
+                              </div>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
