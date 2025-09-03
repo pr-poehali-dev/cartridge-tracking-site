@@ -1763,7 +1763,7 @@ function ComputerForm({ computer, departments, onSave, onCancel, onChange }: Com
             id="monitor"
             value={formData.monitor || ''}
             onChange={(e) => updateFormData('monitor', e.target.value)}
-            placeholder="Dell 24" P2414H"
+            placeholder='Dell 24" P2414H'
           />
         </div>
         <div className="space-y-2">
