@@ -61,6 +61,7 @@ export default function Index() {
   const [computers, setComputers] = useState<Computer[]>([]);
   const [editingComputer, setEditingComputer] = useState<Computer | null>(null);
   const [isComputerDialogOpen, setIsComputerDialogOpen] = useState(false);
+  const [computerSearch, setComputerSearch] = useState('');
   
   // Управление отделами
   const [departments, setDepartments] = useState<string[]>([
@@ -346,6 +347,234 @@ export default function Index() {
     if (computer) {
       setComputers(computers.filter(c => c.id !== computerId));
       toast({ title: 'Удалено', description: `${computer.name} удален из базы` });
+    }
+  };
+
+  const printWorkplacePassport = (computer: Computer) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Паспорт рабочего места - ${computer.name}</title>
+          <style>
+            body {
+              font-family: 'Times New Roman', serif;
+              margin: 0;
+              padding: 20px;
+              line-height: 1.4;
+              color: #000;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #000;
+              padding-bottom: 10px;
+            }
+            .title {
+              font-size: 18px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .subtitle {
+              font-size: 14px;
+              margin-bottom: 20px;
+            }
+            .section {
+              margin-bottom: 25px;
+            }
+            .section-title {
+              font-weight: bold;
+              font-size: 14px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #ccc;
+              padding-bottom: 2px;
+            }
+            .info-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+            }
+            .info-table td {
+              padding: 5px 8px;
+              border: 1px solid #000;
+              font-size: 12px;
+            }
+            .info-table td:first-child {
+              font-weight: bold;
+              background-color: #f5f5f5;
+              width: 30%;
+            }
+            .signatures {
+              margin-top: 40px;
+              display: flex;
+              justify-content: space-between;
+            }
+            .signature-block {
+              width: 45%;
+              text-align: center;
+            }
+            .signature-line {
+              border-bottom: 1px solid #000;
+              height: 40px;
+              margin-bottom: 5px;
+            }
+            .signature-label {
+              font-size: 11px;
+              font-style: italic;
+            }
+            .date-block {
+              text-align: right;
+              margin-top: 20px;
+              font-size: 12px;
+            }
+            @media print {
+              body { margin: 0; }
+              .signatures { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">ПАСПОРТ РАБОЧЕГО МЕСТА</div>
+            <div class="subtitle">Информационная система учета компьютерной техники</div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Основная информация</div>
+            <table class="info-table">
+              <tr>
+                <td>Инвентарный номер:</td>
+                <td>${computer.inventoryNumber}</td>
+              </tr>
+              <tr>
+                <td>Название/Модель:</td>
+                <td>${computer.name}</td>
+              </tr>
+              <tr>
+                <td>Статус:</td>
+                <td>${computer.status === 'active' ? 'Активный' :
+                     computer.status === 'repair' ? 'На ремонте' :
+                     computer.status === 'storage' ? 'На складе' : 'Списан'}</td>
+              </tr>
+              <tr>
+                <td>Дата покупки:</td>
+                <td>${new Date(computer.purchaseDate).toLocaleDateString('ru-RU')}</td>
+              </tr>
+              ${computer.warrantyUntil ? `
+              <tr>
+                <td>Гарантия до:</td>
+                <td>${new Date(computer.warrantyUntil).toLocaleDateString('ru-RU')}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Технические характеристики</div>
+            <table class="info-table">
+              <tr>
+                <td>Процессор:</td>
+                <td>${computer.processor}</td>
+              </tr>
+              <tr>
+                <td>Оперативная память:</td>
+                <td>${computer.ram}</td>
+              </tr>
+              <tr>
+                <td>Накопитель:</td>
+                <td>${computer.storage}</td>
+              </tr>
+              ${computer.gpu ? `
+              <tr>
+                <td>Видеокарта:</td>
+                <td>${computer.gpu}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+
+          ${computer.monitor || computer.keyboard || computer.mouse ? `
+          <div class="section">
+            <div class="section-title">Периферийные устройства</div>
+            <table class="info-table">
+              ${computer.monitor ? `
+              <tr>
+                <td>Монитор:</td>
+                <td>${computer.monitor}</td>
+              </tr>
+              ` : ''}
+              ${computer.keyboard ? `
+              <tr>
+                <td>Клавиатура:</td>
+                <td>${computer.keyboard}</td>
+              </tr>
+              ` : ''}
+              ${computer.mouse ? `
+              <tr>
+                <td>Мышь:</td>
+                <td>${computer.mouse}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+          ` : ''}
+
+          ${computer.assignedUser ? `
+          <div class="section">
+            <div class="section-title">Ответственное лицо</div>
+            <table class="info-table">
+              <tr>
+                <td>ФИО пользователя:</td>
+                <td>${computer.assignedUser}</td>
+              </tr>
+              <tr>
+                <td>Отдел:</td>
+                <td>${computer.assignedDepartment || 'Не указан'}</td>
+              </tr>
+            </table>
+          </div>
+          ` : ''}
+
+          ${computer.notes ? `
+          <div class="section">
+            <div class="section-title">Примечания</div>
+            <div style="padding: 10px; border: 1px solid #000; min-height: 40px; font-size: 12px;">
+              ${computer.notes}
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="signatures">
+            <div class="signature-block">
+              <div class="signature-line"></div>
+              <div class="signature-label">Подпись начальника отдела ИБ</div>
+              <div style="margin-top: 10px; font-size: 10px;">
+                Дата: _______________
+              </div>
+            </div>
+            <div class="signature-block">
+              <div class="signature-line"></div>
+              <div class="signature-label">Подпись администратора ИС</div>
+              <div style="margin-top: 10px; font-size: 10px;">
+                Дата: _______________
+              </div>
+            </div>
+          </div>
+
+          <div class="date-block">
+            Документ сформирован: ${new Date().toLocaleDateString('ru-RU')} ${new Date().toLocaleTimeString('ru-RU')}
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
   };
 
@@ -1480,8 +1709,34 @@ export default function Index() {
               </Button>
             </div>
 
+            <div className="flex gap-4 items-center mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Поиск по названию, номеру, пользователю или отделу..."
+                    value={computerSearch}
+                    onChange={(e) => setComputerSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {computers.map((computer) => (
+              {computers
+                .filter((computer) => {
+                  if (!computerSearch) return true;
+                  const search = computerSearch.toLowerCase();
+                  return (
+                    computer.name.toLowerCase().includes(search) ||
+                    computer.inventoryNumber.toLowerCase().includes(search) ||
+                    computer.processor.toLowerCase().includes(search) ||
+                    (computer.assignedUser && computer.assignedUser.toLowerCase().includes(search)) ||
+                    (computer.assignedDepartment && computer.assignedDepartment.toLowerCase().includes(search))
+                  );
+                })
+                .map((computer) => (
                 <Card key={computer.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -1533,7 +1788,7 @@ export default function Index() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-1 pt-2">
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -1542,6 +1797,15 @@ export default function Index() {
                       >
                         <Icon name="Edit" size={14} className="mr-1" />
                         Изменить
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => printWorkplacePassport(computer)}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        title="Печать паспорта рабочего места"
+                      >
+                        <Icon name="Printer" size={14} />
                       </Button>
                       <Button 
                         variant="outline" 
@@ -1556,15 +1820,40 @@ export default function Index() {
                 </Card>
               ))}
               
-              {computers.length === 0 && (
+              {computers
+                .filter((computer) => {
+                  if (!computerSearch) return true;
+                  const search = computerSearch.toLowerCase();
+                  return (
+                    computer.name.toLowerCase().includes(search) ||
+                    computer.inventoryNumber.toLowerCase().includes(search) ||
+                    computer.processor.toLowerCase().includes(search) ||
+                    (computer.assignedUser && computer.assignedUser.toLowerCase().includes(search)) ||
+                    (computer.assignedDepartment && computer.assignedDepartment.toLowerCase().includes(search))
+                  );
+                }).length === 0 && (
                 <div className="col-span-full text-center py-12">
-                  <Icon name="Monitor" size={64} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Нет компьютеров</h3>
-                  <p className="text-gray-600 mb-4">Добавьте первый компьютер в систему учета</p>
-                  <Button onClick={() => setIsComputerDialogOpen(true)}>
-                    <Icon name="Plus" size={16} className="mr-2" />
-                    Добавить компьютер
-                  </Button>
+                  {computerSearch ? (
+                    <>
+                      <Icon name="Search" size={64} className="mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Ничего не найдено</h3>
+                      <p className="text-gray-600 mb-4">Попробуйте изменить поисковый запрос</p>
+                      <Button variant="outline" onClick={() => setComputerSearch('')}>
+                        <Icon name="X" size={16} className="mr-2" />
+                        Очистить поиск
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="Monitor" size={64} className="mx-auto text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Нет компьютеров</h3>
+                      <p className="text-gray-600 mb-4">Добавьте первый компьютер в систему учета</p>
+                      <Button onClick={() => setIsComputerDialogOpen(true)}>
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Добавить компьютер
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
