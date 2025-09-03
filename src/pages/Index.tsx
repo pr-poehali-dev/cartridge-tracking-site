@@ -1801,14 +1801,14 @@ function ComputerForm({ computer, departments, onSave, onCancel, onChange }: Com
           <div className="space-y-2">
             <Label htmlFor="assignedDepartment">Отдел</Label>
             <Select 
-              value={formData.assignedDepartment || ''} 
-              onValueChange={(value) => updateFormData('assignedDepartment', value)}
+              value={formData.assignedDepartment || 'none'} 
+              onValueChange={(value) => updateFormData('assignedDepartment', value === 'none' ? '' : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Выберите отдел" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Не назначен</SelectItem>
+                <SelectItem value="none">Не назначен</SelectItem>
                 {departments.map((dept) => (
                   <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
