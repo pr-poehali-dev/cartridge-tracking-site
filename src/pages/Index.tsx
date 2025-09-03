@@ -33,10 +33,34 @@ interface IssueRecord {
   subcategory: string;
 }
 
+interface Computer {
+  id: string;
+  inventoryNumber: string;
+  name: string;
+  processor: string;
+  ram: string;
+  storage: string;
+  gpu?: string;
+  monitor?: string;
+  keyboard?: string;
+  mouse?: string;
+  assignedUser?: string;
+  assignedDepartment?: string;
+  status: 'active' | 'repair' | 'storage' | 'disposed';
+  purchaseDate: string;
+  warrantyUntil?: string;
+  notes?: string;
+}
+
 export default function Index() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('warehouse');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importData, setImportData] = useState('');
+  const [computers, setComputers] = useState<Computer[]>([]);
+  const [editingComputer, setEditingComputer] = useState<Computer | null>(null);
+  const [isComputerDialogOpen, setIsComputerDialogOpen] = useState(false);
   
   // Управление отделами
   const [departments, setDepartments] = useState<string[]>([
@@ -248,6 +272,7 @@ export default function Index() {
       inventory,
       issueHistory,
       departments,
+      computers,
       exportDate: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -260,6 +285,68 @@ export default function Index() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast({ title: 'Бэкап создан', description: 'Данные экспортированы' });
+  };
+
+  const importJsonData = () => {
+    try {
+      const parsedData = JSON.parse(importData);
+      
+      if (parsedData.inventory && Array.isArray(parsedData.inventory)) {
+        setInventory(parsedData.inventory);
+      }
+      if (parsedData.issueHistory && Array.isArray(parsedData.issueHistory)) {
+        setIssueHistory(parsedData.issueHistory);
+      }
+      if (parsedData.departments && Array.isArray(parsedData.departments)) {
+        setDepartments(parsedData.departments);
+      }
+      if (parsedData.computers && Array.isArray(parsedData.computers)) {
+        setComputers(parsedData.computers);
+      }
+      
+      setImportData('');
+      setImportDialogOpen(false);
+      toast({ title: 'Импорт завершен', description: 'Данные успешно импортированы' });
+    } catch (error) {
+      toast({ title: 'Ошибка импорта', description: 'Некорректный формат JSON', variant: 'destructive' });
+    }
+  };
+
+  const addComputer = (computerData: Omit<Computer, 'id'>) => {
+    const newComputer: Computer = {
+      ...computerData,
+      id: Date.now().toString()
+    };
+    setComputers([...computers, newComputer]);
+    toast({ title: 'Компьютер добавлен', description: `${computerData.name} добавлен в базу` });
+  };
+
+  const editComputer = (computer: Computer) => {
+    setEditingComputer({...computer});
+    setIsComputerDialogOpen(true);
+  };
+
+  const updateComputer = () => {
+    if (!editingComputer || !editingComputer.name || !editingComputer.inventoryNumber) {
+      toast({ title: 'Ошибка', description: 'Заполните обязательные поля', variant: 'destructive' });
+      return;
+    }
+
+    setComputers(computers.map(computer => 
+      computer.id === editingComputer.id ? editingComputer : computer
+    ));
+    
+    setIsComputerDialogOpen(false);
+    setEditingComputer(null);
+    toast({ title: 'Обновлено', description: `${editingComputer.name} успешно обновлен` });
+  };
+
+  const deleteComputer = (computerId: string) => {
+    const computer = computers.find(c => c.id === computerId);
+    if (computer) {
+      setComputers(computers.filter(c => c.id !== computerId));
+      toast({ title: 'Удалено', description: `${computer.name} удален из базы` });
+    }
   };
 
   const clearAllData = () => {
@@ -381,7 +468,7 @@ export default function Index() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-6 bg-white shadow-sm">
             <TabsTrigger value="warehouse" className="flex items-center gap-2">
               <Icon name="Warehouse" size={16} />
               Склад
@@ -393,6 +480,10 @@ export default function Index() {
             <TabsTrigger value="receipt" className="flex items-center gap-2">
               <Icon name="Plus" size={16} />
               Поступление
+            </TabsTrigger>
+            <TabsTrigger value="computers" className="flex items-center gap-2">
+              <Icon name="Monitor" size={16} />
+              Компьютеры
             </TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <Icon name="BarChart3" size={16} />
@@ -1318,6 +1409,15 @@ export default function Index() {
                     </Button>
                     
                     <Button 
+                      onClick={() => setImportDialogOpen(true)} 
+                      className="w-full" 
+                      variant="outline"
+                    >
+                      <Icon name="Upload" size={16} className="mr-2" />
+                      Импорт данных JSON
+                    </Button>
+                    
+                    <Button 
                       onClick={clearAllData} 
                       className="w-full text-red-600 border-red-200 hover:bg-red-50"
                       variant="outline"
@@ -1367,7 +1467,414 @@ export default function Index() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="computers" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Учет компьютеров</h2>
+                <p className="text-gray-600">Управление компьютерной техникой и привязка к пользователям</p>
+              </div>
+              <Button onClick={() => setIsComputerDialogOpen(true)}>
+                <Icon name="Plus" size={16} className="mr-2" />
+                Добавить компьютер
+              </Button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {computers.map((computer) => (
+                <Card key={computer.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon name="Monitor" size={24} className="text-primary" />
+                        <div>
+                          <CardTitle className="text-lg">{computer.name}</CardTitle>
+                          <CardDescription>#{computer.inventoryNumber}</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant={
+                        computer.status === 'active' ? 'default' : 
+                        computer.status === 'repair' ? 'destructive' :
+                        computer.status === 'storage' ? 'secondary' : 'outline'
+                      }>
+                        {computer.status === 'active' ? 'Активный' :
+                         computer.status === 'repair' ? 'Ремонт' :
+                         computer.status === 'storage' ? 'На складе' : 'Списан'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Icon name="Cpu" size={14} className="text-gray-500" />
+                        <span>{computer.processor}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Icon name="HardDrive" size={14} className="text-gray-500" />
+                        <span>{computer.ram} / {computer.storage}</span>
+                      </div>
+                      {computer.gpu && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Icon name="MonitorSpeaker" size={14} className="text-gray-500" />
+                          <span>{computer.gpu}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {computer.assignedUser && (
+                      <div className="border-t pt-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Icon name="User" size={14} className="text-blue-600" />
+                          <span className="font-medium">{computer.assignedUser}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 ml-5">
+                          <span>{computer.assignedDepartment}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => editComputer(computer)}
+                        className="flex-1"
+                      >
+                        <Icon name="Edit" size={14} className="mr-1" />
+                        Изменить
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => deleteComputer(computer.id)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Icon name="Trash2" size={14} />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {computers.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <Icon name="Monitor" size={64} className="mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Нет компьютеров</h3>
+                  <p className="text-gray-600 mb-4">Добавьте первый компьютер в систему учета</p>
+                  <Button onClick={() => setIsComputerDialogOpen(true)}>
+                    <Icon name="Plus" size={16} className="mr-2" />
+                    Добавить компьютер
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon name="Upload" size={20} />
+                  Импорт данных JSON
+                </DialogTitle>
+                <DialogDescription>
+                  Вставьте JSON данные для импорта в систему
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="importData">JSON данные</Label>
+                  <textarea
+                    id="importData"
+                    value={importData}
+                    onChange={(e) => setImportData(e.target.value)}
+                    placeholder='{"inventory": [...], "issueHistory": [...], "departments": [...], "computers": [...]}'
+                    className="w-full min-h-[200px] p-3 border rounded-md resize-none font-mono text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={importJsonData} className="flex-1">
+                    <Icon name="Upload" size={16} className="mr-2" />
+                    Импортировать
+                  </Button>
+                  <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                    Отмена
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isComputerDialogOpen} onOpenChange={setIsComputerDialogOpen}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon name="Monitor" size={20} />
+                  {editingComputer ? 'Редактировать компьютер' : 'Добавить компьютер'}
+                </DialogTitle>
+                <DialogDescription>
+                  Заполните информацию о компьютере и его комплектующих
+                </DialogDescription>
+              </DialogHeader>
+              
+              <ComputerForm
+                computer={editingComputer}
+                departments={departments}
+                onSave={(computerData) => {
+                  if (editingComputer) {
+                    updateComputer();
+                  } else {
+                    addComputer(computerData);
+                    setIsComputerDialogOpen(false);
+                  }
+                }}
+                onCancel={() => {
+                  setIsComputerDialogOpen(false);
+                  setEditingComputer(null);
+                }}
+                onChange={setEditingComputer}
+              />
+            </DialogContent>
+          </Dialog>
         </Tabs>
+      </div>
+    </div>
+  );
+}
+
+interface ComputerFormProps {
+  computer: Computer | null;
+  departments: string[];
+  onSave: (computer: Omit<Computer, 'id'>) => void;
+  onCancel: () => void;
+  onChange: (computer: Computer | null) => void;
+}
+
+function ComputerForm({ computer, departments, onSave, onCancel, onChange }: ComputerFormProps) {
+  const [formData, setFormData] = useState<Omit<Computer, 'id'>>({
+    inventoryNumber: '',
+    name: '',
+    processor: '',
+    ram: '',
+    storage: '',
+    gpu: '',
+    monitor: '',
+    keyboard: '',
+    mouse: '',
+    assignedUser: '',
+    assignedDepartment: '',
+    status: 'storage',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    warrantyUntil: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    if (computer) {
+      setFormData(computer);
+    }
+  }, [computer]);
+
+  const handleSubmit = () => {
+    if (!formData.inventoryNumber || !formData.name || !formData.processor || !formData.ram || !formData.storage) {
+      toast({ title: 'Ошибка', description: 'Заполните обязательные поля', variant: 'destructive' });
+      return;
+    }
+    onSave(formData);
+  };
+
+  const updateFormData = (field: keyof Omit<Computer, 'id'>, value: string) => {
+    const newData = { ...formData, [field]: value };
+    setFormData(newData);
+    if (computer) {
+      onChange({ ...computer, ...newData });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="inventoryNumber">Инвентарный номер *</Label>
+          <Input
+            id="inventoryNumber"
+            value={formData.inventoryNumber}
+            onChange={(e) => updateFormData('inventoryNumber', e.target.value)}
+            placeholder="INV-001"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="name">Название/Модель *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => updateFormData('name', e.target.value)}
+            placeholder="Dell OptiPlex 7090"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="processor">Процессор *</Label>
+          <Input
+            id="processor"
+            value={formData.processor}
+            onChange={(e) => updateFormData('processor', e.target.value)}
+            placeholder="Intel Core i5-11400"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ram">Оперативная память *</Label>
+          <Input
+            id="ram"
+            value={formData.ram}
+            onChange={(e) => updateFormData('ram', e.target.value)}
+            placeholder="16 ГБ DDR4"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="storage">Накопитель *</Label>
+          <Input
+            id="storage"
+            value={formData.storage}
+            onChange={(e) => updateFormData('storage', e.target.value)}
+            placeholder="512 ГБ SSD"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="gpu">Видеокарта</Label>
+          <Input
+            id="gpu"
+            value={formData.gpu || ''}
+            onChange={(e) => updateFormData('gpu', e.target.value)}
+            placeholder="Intel UHD Graphics 730"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="monitor">Монитор</Label>
+          <Input
+            id="monitor"
+            value={formData.monitor || ''}
+            onChange={(e) => updateFormData('monitor', e.target.value)}
+            placeholder="Dell 24" P2414H"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="keyboard">Клавиатура</Label>
+          <Input
+            id="keyboard"
+            value={formData.keyboard || ''}
+            onChange={(e) => updateFormData('keyboard', e.target.value)}
+            placeholder="Dell KB216"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="mouse">Мышь</Label>
+          <Input
+            id="mouse"
+            value={formData.mouse || ''}
+            onChange={(e) => updateFormData('mouse', e.target.value)}
+            placeholder="Dell MS116"
+          />
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <h4 className="font-medium mb-4">Привязка к пользователю</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="assignedUser">Пользователь</Label>
+            <Input
+              id="assignedUser"
+              value={formData.assignedUser || ''}
+              onChange={(e) => updateFormData('assignedUser', e.target.value)}
+              placeholder="Иванов Иван Иванович"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="assignedDepartment">Отдел</Label>
+            <Select 
+              value={formData.assignedDepartment || ''} 
+              onValueChange={(value) => updateFormData('assignedDepartment', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите отдел" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Не назначен</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="status">Статус</Label>
+          <Select 
+            value={formData.status} 
+            onValueChange={(value) => updateFormData('status', value as Computer['status'])}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Активный</SelectItem>
+              <SelectItem value="repair">На ремонте</SelectItem>
+              <SelectItem value="storage">На складе</SelectItem>
+              <SelectItem value="disposed">Списан</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="purchaseDate">Дата покупки</Label>
+          <Input
+            id="purchaseDate"
+            type="date"
+            value={formData.purchaseDate}
+            onChange={(e) => updateFormData('purchaseDate', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="warrantyUntil">Гарантия до</Label>
+          <Input
+            id="warrantyUntil"
+            type="date"
+            value={formData.warrantyUntil || ''}
+            onChange={(e) => updateFormData('warrantyUntil', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Примечания</Label>
+        <textarea
+          id="notes"
+          value={formData.notes || ''}
+          onChange={(e) => updateFormData('notes', e.target.value)}
+          placeholder="Дополнительные заметки о компьютере..."
+          className="w-full min-h-[80px] p-3 border rounded-md resize-none"
+        />
+      </div>
+
+      <div className="flex gap-2 pt-4 border-t">
+        <Button onClick={handleSubmit} className="flex-1">
+          <Icon name="Save" size={16} className="mr-2" />
+          {computer ? 'Сохранить изменения' : 'Добавить компьютер'}
+        </Button>
+        <Button variant="outline" onClick={onCancel}>
+          Отмена
+        </Button>
       </div>
     </div>
   );
