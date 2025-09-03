@@ -438,6 +438,7 @@ export default function Index() {
         </head>
         <body>
           <div class="header">
+            <img src="https://cdn.poehali.dev/files/c2838608-b203-4c58-9c10-a41f8e483a58.png" alt="Логотип" style="height: 40px; margin: 0 auto 15px auto; display: block;">
             <div class="title">ПАСПОРТ РАБОЧЕГО МЕСТА</div>
             <div class="subtitle">Информационная система учета компьютерной техники</div>
           </div>
@@ -650,8 +651,12 @@ export default function Index() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
-              <Icon name="Lock" size={32} className="text-white" />
+            <div className="mx-auto mb-6">
+              <img 
+                src="https://cdn.poehali.dev/files/c2838608-b203-4c58-9c10-a41f8e483a58.png" 
+                alt="Логотип системы" 
+                className="h-16 w-auto mx-auto mb-4"
+              />
             </div>
             <CardTitle className="text-2xl font-bold">Система Учета</CardTitle>
             <CardDescription>Введите пароль для доступа</CardDescription>
@@ -682,9 +687,16 @@ export default function Index() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Система Учета Оборудования</h1>
-            <p className="text-gray-600 mt-1">Управление расходными материалами и оборудованием</p>
+          <div className="flex items-center gap-4">
+            <img 
+              src="https://cdn.poehali.dev/files/c2838608-b203-4c58-9c10-a41f8e483a58.png" 
+              alt="Логотип системы" 
+              className="h-12 w-auto"
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Система Учета Оборудования</h1>
+              <p className="text-gray-600 mt-1">Управление расходными материалами и оборудованием</p>
+            </div>
           </div>
           <Button 
             variant="outline" 
