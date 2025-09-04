@@ -7,8 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import Icon from '@/components/ui/icon';
 import { toast } from '@/hooks/use-toast';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface InventoryItem {
   id: string;
@@ -53,6 +55,7 @@ interface Computer {
 }
 
 export default function Index() {
+  const { theme, toggleTheme } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('warehouse');
@@ -648,7 +651,7 @@ export default function Index() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-xl">
           <CardHeader className="text-center">
             <div className="mx-auto mb-6">
@@ -684,7 +687,7 @@ export default function Index() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
       <div className="container mx-auto p-6">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
@@ -694,14 +697,14 @@ export default function Index() {
               className="h-12 w-auto"
             />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Система Учета Оборудования</h1>
-              <p className="text-gray-600 mt-1">Управление расходными материалами и оборудованием</p>
+              <h1 className="text-3xl font-bold text-foreground">Система Учета Оборудования</h1>
+              <p className="text-muted-foreground mt-1">Управление расходными материалами и оборудованием</p>
             </div>
           </div>
           <Button 
             variant="outline" 
             onClick={() => setIsAuthenticated(false)}
-            className="text-red-600 border-red-200 hover:bg-red-50"
+            className="text-destructive border-destructive/30 hover:bg-destructive/10"
           >
             <Icon name="LogOut" size={16} className="mr-2" />
             Выйти
@@ -709,7 +712,7 @@ export default function Index() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 bg-white shadow-sm">
+          <TabsList className="grid w-full grid-cols-6 bg-card shadow-sm">
             <TabsTrigger value="warehouse" className="flex items-center gap-2">
               <Icon name="Warehouse" size={16} />
               Склад
@@ -1699,10 +1702,45 @@ export default function Index() {
                   </div>
                 </div>
                 
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <div className="text-sm text-blue-800">
+                <div className="mt-4 p-3 bg-muted/50 border border-border rounded">
+                  <div className="text-sm text-muted-foreground">
                     <Icon name="Info" size={14} className="inline mr-1" />
                     <strong>Важно:</strong> Данные сохраняются только в этом браузере. Рекомендуется периодически создавать экспорт данных.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Palette" size={20} />
+                  Настройки интерфейса
+                </CardTitle>
+                <CardDescription>Персонализация внешнего вида системы</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon name={theme === 'dark' ? 'Moon' : 'Sun'} size={16} />
+                      <Label className="text-base font-medium">Тема оформления</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {theme === 'dark' ? 'Темная тема активна' : 'Светлая тема активна'}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={theme === 'dark'}
+                    onCheckedChange={toggleTheme}
+                    aria-label="Переключить тему"
+                  />
+                </div>
+                
+                <div className="mt-4 p-3 bg-muted/50 border rounded-lg">
+                  <div className="text-sm text-muted-foreground">
+                    <Icon name="Info" size={14} className="inline mr-1" />
+                    <strong>Подсказка:</strong> Тема автоматически сохраняется и применяется при следующем входе.
                   </div>
                 </div>
               </CardContent>
@@ -1823,7 +1861,7 @@ export default function Index() {
                         variant="outline" 
                         size="sm" 
                         onClick={() => deleteComputer(computer.id)}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
                       >
                         <Icon name="Trash2" size={14} />
                       </Button>
